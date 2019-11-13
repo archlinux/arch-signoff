@@ -6,6 +6,7 @@ import urllib
 
 import click
 import dateutil.parser
+import os
 import pyalpm
 import pycman.pkginfo
 import requests
@@ -267,8 +268,7 @@ def format_signoff_long(signoff_pkg, local_pkg, options):
 
     return "\n".join(attributes)
 
-
-def warn_if_outdated(signoff_pkg, local_pkg):
+def warn_if_outdated(signoff_pkg, local_pkg, color):
     """
     Echo a warning message if local and sign-off package versions differ.
     """
@@ -279,10 +279,10 @@ def warn_if_outdated(signoff_pkg, local_pkg):
             "({signoff_version})".format(
                 pkg=signoff_pkg["pkgbase"],
                 local_version=local_pkg.version,
-                signoff_version=signoff_pkg["version"]))
+                signoff_version=signoff_pkg["version"]), color=color)
 
 
-def warn_if_bad(signoff_pkg):
+def warn_if_bad(signoff_pkg, color):
     """
     Echo a warning message if sign-off package is bad.
     """
@@ -290,16 +290,21 @@ def warn_if_bad(signoff_pkg):
         click.echo(
             click.style("warning:", fg="yellow", bold=True) +
             " {pkg} is known to be bad".format(
-                pkg=signoff_pkg["pkgbase"]))
+                pkg=signoff_pkg["pkgbase"]), color=color)
 
 
-def confirm(text, *args, **kwargs):
+def confirm(text, color, *args, **kwargs):
     """
     Wrapper around click.confirm that adds minor styling to the prompt.
     """
-    prefix = click.style(":: ", bold=True, fg="blue")
-    styled = click.style(text, bold=True)
+    if color:
+        prefix = click.style(":: ", bold=True, fg="blue")
+        styled = click.style(text, bold=True)
+    else:
+        prefix = ":: "
+        styled = click.unstyle(text)
     return click.confirm(prefix + styled, *args, **kwargs)
+
 
 
 class Options:
@@ -335,9 +340,10 @@ class Options:
 @click.option("-b", "--db-path", type=click.Path(), default="/var/lib/pacman",
               help="pacman database path")
 @click.option("--noconfirm", is_flag=True, help="don't ask for confirmation")
+@click.option("--nocolor", is_flag=True, help="strip ANSI styles from output")
 @click.argument("package", nargs=-1)
 def main(action, uninstalled, signed_off, quiet, username, password, package,
-         db_path, noconfirm):
+         db_path, noconfirm, nocolor):
     """
     Interface with Arch Linux package signoffs.
     """
@@ -355,7 +361,8 @@ def main(action, uninstalled, signed_off, quiet, username, password, package,
         packages=set(package),
         db_path=db_path,
         username=username,
-        noconfirm=noconfirm)
+        noconfirm=noconfirm,
+        nocolor=nocolor)
 
     # initialize alpm handle and signoff session
     try:
@@ -366,6 +373,11 @@ def main(action, uninstalled, signed_off, quiet, username, password, package,
         sys.exit(1)
 
     session = SignoffSession(options.username, password)
+
+    if options.nocolor or os.environ.get("TERM") == "dumb":
+        colorize = False
+    else:
+        colorize = True
 
     # fetch and filter signoff packages
     signoffs = list(list_signoffs(session, alpm_handle))
@@ -380,15 +392,15 @@ def main(action, uninstalled, signed_off, quiet, username, password, package,
 
     if action == "list":  # output packages and exit
         for signoff_pkg, local_pkg in packages:
-            click.echo(format_signoff(signoff_pkg, local_pkg, options))
+            click.echo(format_signoff(signoff_pkg, local_pkg, options), color=colorize)
             if not options.quiet:
                 click.echo()  # add a line between packages
     elif action == "signoff":  # sign-off packages
         for signoff_pkg, local_pkg in packages:
-            warn_if_outdated(signoff_pkg, local_pkg)
-            warn_if_bad(signoff_pkg)
+            warn_if_outdated(signoff_pkg, local_pkg, colorize)
+            warn_if_bad(signoff_pkg, colorize)
         if options.noconfirm or confirm("Sign off {}?".format(
-                click.style(" ".join(pkgbases), bold=True))):
+                click.style(" ".join(pkgbases), bold=True)), colorize):
             for signoff_pkg, local_pkg in packages:
                 try:
                     session.signoff_package(signoff_pkg)
@@ -398,10 +410,10 @@ def main(action, uninstalled, signed_off, quiet, username, password, package,
                     click.echo("Signed off {}.".format(signoff_pkg["pkgbase"]))
     elif action == "revoke":  # revoke sign-offs
         for signoff_pkg, local_pkg in packages:
-            warn_if_outdated(signoff_pkg, local_pkg)
-            warn_if_bad(signoff_pkg)
+            warn_if_outdated(signoff_pkg, local_pkg, colorize)
+            warn_if_bad(signoff_pkg, colorize)
         if options.noconfirm or confirm("Revoke sign-off for {}?".format(
-                click.style(" ".join(pkgbases), bold=True))):
+                click.style(" ".join(pkgbases), bold=True)), colorize):
             for signoff_pkg, local_pkg in packages:
                 session.revoke_package(signoff_pkg)
                 click.echo("Revoked sign-off for {}.".format(
@@ -409,8 +421,8 @@ def main(action, uninstalled, signed_off, quiet, username, password, package,
     elif action == "interactive":  # interactively sign-off or revoke
         for signoff_pkg, local_pkg in packages:
             click.echo(format_signoff(signoff_pkg, local_pkg, options))
-            warn_if_outdated(signoff_pkg, local_pkg)
-            warn_if_bad(signoff_pkg)
+            warn_if_outdated(signoff_pkg, local_pkg, colorize)
+            warn_if_bad(signoff_pkg, colorize)
             if not options.quiet:
                 click.echo()
 
@@ -425,7 +437,7 @@ def main(action, uninstalled, signed_off, quiet, username, password, package,
                 prompt = "Sign off {}?".format(pkgbase)
 
             # confirm and signoff/revoke
-            if confirm(prompt):
+            if confirm(prompt, colorize):
                 if signed_off:
                     session.revoke_package(signoff_pkg)
                     click.echo("Revoked sign-off for {}.".format(pkgbase))

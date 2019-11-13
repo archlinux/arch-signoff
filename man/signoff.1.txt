@@ -55,6 +55,9 @@ Options
 *\--noconfirm*::
 	Don't ask for confirmation.
 
+*\--nocolor*::
+	Don't use color in output.
+
 *-h, \--help*::
 	Show this message and exit.
 
