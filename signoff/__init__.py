@@ -3,7 +3,6 @@
 
 from operator import itemgetter
 import urllib
-import time
 
 import click
 import dateutil.parser
@@ -315,26 +314,26 @@ class Options:
 
 @click.command(context_settings={"help_option_names": ("-h", "--help")})
 @click.option("-s", "--signoff", "action", flag_value="signoff", help="sign "
-        "off packages")
+              "off packages")
 @click.option("-r", "--revoke", "action", flag_value="revoke", help="revoke "
-        "signed-off packages")
+              "signed-off packages")
 @click.option("-l", "--list", "action", flag_value="list", help="list "
-        "packages that can be signed off")
+              "packages that can be signed off")
 @click.option("-i", "--interactive", "action", flag_value="interactive",
-        help="interactively sign off packages")
+              help="interactively sign off packages")
 @click.option("-u", "--uninstalled", is_flag=True, help="include uninstalled "
-        "packages when listing")
+              "packages when listing")
 @click.option("-a", "--signed-off", is_flag=True, help="include signed-off "
-        "packages when listing")
+              "packages when listing")
 @click.option("-q", "--quiet", is_flag=True, help="be less verbose when "
-        "listing packages")
+              "listing packages")
 @click.option("--username", prompt=True, envvar="ARCHWEB_USERNAME",
-        help="ArchWeb username (ARCHWEB_USERNAME env. var.)")
+              help="ArchWeb username (ARCHWEB_USERNAME env. var.)")
 @click.option("--password", prompt=True, hide_input=True,
-        envvar="ARCHWEB_PASSWORD", help="ArchWeb password (ARCHWEB_PASSWORD "
-        "env. var.)")
+              envvar="ARCHWEB_PASSWORD", help="ArchWeb password (ARCHWEB_PASSWORD "
+              "env. var.)")
 @click.option("-b", "--db-path", type=click.Path(), default="/var/lib/pacman",
-        help="pacman database path")
+              help="pacman database path")
 @click.option("--noconfirm", is_flag=True, help="don't ask for confirmation")
 @click.argument("package", nargs=-1)
 def main(action, uninstalled, signed_off, quiet, username, password, package,
@@ -361,9 +360,9 @@ def main(action, uninstalled, signed_off, quiet, username, password, package,
     # initialize alpm handle and signoff session
     try:
         alpm_handle = pyalpm.Handle("/", options.db_path)
-    except:
+    except pyalpm.error:
         click.echo("error: could not read alpm database {}".format(options.db_path),
-            err=True)
+                   err=True)
         sys.exit(1)
 
     session = SignoffSession(options.username, password)
