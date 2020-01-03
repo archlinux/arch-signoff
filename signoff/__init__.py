@@ -268,6 +268,7 @@ def format_signoff_long(signoff_pkg, local_pkg, options):
 
     return "\n".join(attributes)
 
+
 def warn_if_outdated(signoff_pkg, local_pkg, color):
     """
     Echo a warning message if local and sign-off package versions differ.
@@ -304,7 +305,6 @@ def confirm(text, color, *args, **kwargs):
         prefix = ":: "
         styled = click.unstyle(text)
     return click.confirm(prefix + styled, *args, **kwargs)
-
 
 
 class Options:
