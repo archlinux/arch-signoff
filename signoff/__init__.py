@@ -173,6 +173,8 @@ def format_attr(*args, **kwargs):
     Format an attribute in pacman -Qi style.
     """
     formatted = pycman.pkginfo.format_attr(*args, **kwargs)
+    if not formatted:
+        return click.style("")
     index = formatted.index(":") + 1
     return click.style(formatted[:index], bold=True) + formatted[index:]
 
