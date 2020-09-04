@@ -1,0 +1,8 @@
+image: archlinux/base
+
+before_script:
+   - pacman -Syu --needed --noconfirm python-flake8 git
+
+lint:
+    script:
+        - flake8 signoff
