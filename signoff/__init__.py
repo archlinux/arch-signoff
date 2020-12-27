@@ -25,7 +25,7 @@ class SignoffSession:
     def __init__(self,
                  username,
                  password,
-                 base_url="https://www.archlinux.org/"):
+                 base_url="https://archlinux.org/"):
         self.base_url = base_url
         self.username = username
         self.session = requests.Session()
